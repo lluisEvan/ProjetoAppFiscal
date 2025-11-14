@@ -12,13 +12,11 @@ import {
   Alert, 
   ActivityIndicator, 
 } from 'react-native';
-import Feather from 'react-native-vector-icons/Feather';
+import { Feather } from '@expo/vector-icons';  // <<<< MUDANÇA AQUI
 
-// ############### IMPORTANTE ###############
-// 1. Inicie sua API (backend) no seu computador.
-// 2. Descubra o IP do seu computador (ex: 192.168.1.5)
-// 3. Coloque esse IP aqui. [cite_start]A porta 3000 está correta[cite: 1].
-const API_URL = 'http://192.168.3.26:3000'; // <<<<<< MUDE AQUI
+
+const API_URL = 'http://192.168.3.26:3000';
+
 
 const LoginScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
@@ -26,6 +24,7 @@ const LoginScreen = ({ navigation }) => {
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -35,30 +34,29 @@ const LoginScreen = ({ navigation }) => {
     setIsLoading(true);
     setError(null); 
 
+
     try {
-      // 4. Faz a requisição para a sua rota de login
       const response = await fetch(`${API_URL}/api/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        // 5. Envia o body que o seu controller espera
         body: JSON.stringify({
           email: email,
           password: password,
         }),
       });
 
+
       const data = await response.json();
+
 
       if (!response.ok) {
         throw new Error(data.message || 'Erro ao fazer login');
       }
       
-      // 6. Se o login for bem-sucedido, a API retorna um token.
-      //    (No futuro, você deve salvar esse token)
-      //    E navegamos para a tela Home.
       navigation.replace('Home'); 
+
 
     } catch (err) {
       setError(err.message);
@@ -66,6 +64,7 @@ const LoginScreen = ({ navigation }) => {
       setIsLoading(false); 
     }
   };
+
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -80,7 +79,7 @@ const LoginScreen = ({ navigation }) => {
             Entre na sua conta para fiscalizar sua cidade
           </Text>
 
-          {/* Label do Email */}
+
           <Text style={styles.label}>Email</Text>
           <View style={styles.inputContainer}>
             <Feather name="mail" size={20} color="#888" style={styles.inputIcon} />
@@ -89,13 +88,14 @@ const LoginScreen = ({ navigation }) => {
               value={email}
               onChangeText={setEmail}
               placeholder="seuemail@exemplo.com"
+              placeholderTextColor="rgba(0, 0, 0, 0.2)"
               keyboardType="email-address"
               autoCapitalize="none"
               editable={!isLoading}
             />
           </View>
 
-          {/* Label da Senha */}
+
           <Text style={styles.label}>Senha</Text>
           <View style={styles.inputContainer}>
             <Feather name="lock" size={20} color="#888" style={styles.inputIcon} />
@@ -104,6 +104,7 @@ const LoginScreen = ({ navigation }) => {
               value={password}
               onChangeText={setPassword}
               placeholder="Sua senha"
+              placeholderTextColor="rgba(0, 0, 0, 0.2)"
               secureTextEntry={!isPasswordVisible} 
               editable={!isLoading}
             />
@@ -119,7 +120,9 @@ const LoginScreen = ({ navigation }) => {
             </TouchableOpacity>
           </View>
 
+
           {error && <Text style={styles.errorText}>{error}</Text>}
+
 
           <TouchableOpacity
             style={styles.buttonPrimary}
@@ -133,15 +136,18 @@ const LoginScreen = ({ navigation }) => {
             )}
           </TouchableOpacity>
 
+
           <TouchableOpacity style={styles.link}>
             <Text style={styles.linkText}>Esqueci minha senha</Text>
           </TouchableOpacity>
+
 
           <View style={styles.separatorContainer}>
             <View style={styles.separatorLine} />
             <Text style={styles.separatorText}>OU</Text>
             <View style={styles.separatorLine} />
           </View>
+
 
           <TouchableOpacity 
             style={styles.buttonSecondary}
@@ -150,6 +156,7 @@ const LoginScreen = ({ navigation }) => {
           >
             <Text style={styles.buttonSecondaryText}>Criar nova conta</Text>
           </TouchableOpacity>
+
 
           <TouchableOpacity style={styles.link}>
             <Text style={styles.linkText}>Continuar como visitante</Text>
@@ -160,7 +167,7 @@ const LoginScreen = ({ navigation }) => {
   );
 };
 
-// (O restante dos estilos permanece o mesmo que você postou)
+
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
@@ -287,5 +294,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
 });
+
 
 export default LoginScreen;

@@ -16,7 +16,6 @@ import {
 import Feather from 'react-native-vector-icons/Feather';
 import Checkbox from 'expo-checkbox'; // Assumindo que você está usando Expo
 
-// ############### IMPORTANTE ###############
 // Deve ser o MESMO IP que você usou no LoginScreen.js
 const API_URL = 'http://192.168.3.26:3000'; // <<<<<< MUDE AQUI (USE O MESMO IP)
 
@@ -118,6 +117,7 @@ const RegisterScreen = ({ navigation }) => {
                 value={nome}
                 onChangeText={setNome}
                 placeholder="Seu nome completo"
+                placeholderTextColor="rgba(0, 0, 0, 0.2)"
                 autoCapitalize="words"
                 editable={!isLoading}
               />
@@ -132,6 +132,7 @@ const RegisterScreen = ({ navigation }) => {
                 value={email}
                 onChangeText={setEmail}
                 placeholder="seu@email.com"
+                placeholderTextColor="rgba(0, 0, 0, 0.2)"
                 keyboardType="email-address"
                 autoCapitalize="none"
                 editable={!isLoading}
@@ -147,6 +148,7 @@ const RegisterScreen = ({ navigation }) => {
                 value={password}
                 onChangeText={setPassword}
                 placeholder="Crie uma senha (mín. 8 caracteres)"
+                placeholderTextColor="rgba(0, 0, 0, 0.2)"
                 secureTextEntry={!isPasswordVisible} 
                 editable={!isLoading}
               />
@@ -171,6 +173,7 @@ const RegisterScreen = ({ navigation }) => {
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
                 placeholder="Confirme sua senha"
+                placeholderTextColor="rgba(0, 0, 0, 0.2)"
                 secureTextEntry={!isConfirmPasswordVisible}
                 editable={!isLoading}
               />
