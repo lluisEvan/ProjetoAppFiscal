@@ -13,11 +13,11 @@ import {
   ActivityIndicator, 
   Alert,
 } from 'react-native';
-import Feather from 'react-native-vector-icons/Feather';
-import Checkbox from 'expo-checkbox'; // Assumindo que você está usando Expo
+import { Feather } from '@expo/vector-icons'; // << 1. MUDANÇA (Consistência)
+import Checkbox from 'expo-checkbox'; 
 
-// Deve ser o MESMO IP que você usou no LoginScreen.js
-const API_URL = 'http://192.168.3.26:3000'; // <<<<<< MUDE AQUI (USE O MESMO IP)
+// << 2. MUDANÇA (Importando do seu arquivo central)
+import { API_URL } from './constants'; 
 
 const RegisterScreen = ({ navigation }) => {
   const [nome, setNome] = useState(''); // Será enviado como 'username'
@@ -32,6 +32,7 @@ const RegisterScreen = ({ navigation }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  // << 3. MUDANÇA (Função handleRegister corrigida)
   const handleRegister = async () => {
     // Validações
     if (!nome || !email || !password || !confirmPassword) {
@@ -42,7 +43,6 @@ const RegisterScreen = ({ navigation }) => {
       setError('As senhas não coincidem.');
       return;
     }
-    // A sua API também valida isso, o que é ótimo
     if (password.length < 8) {
       setError('A senha deve ter no mínimo 8 caracteres.');
       return;
@@ -56,32 +56,38 @@ const RegisterScreen = ({ navigation }) => {
     setError(null);
 
     try {
-      // 1. Faz a requisição para a sua rota de registro
       const response = await fetch(`${API_URL}/api/auth/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        // 2. Envia o body que o seu controller espera
         body: JSON.stringify({
-          username: nome, // O estado 'nome' vira a chave 'username'
+          username: nome, 
           email: email,
           password: password,
         }),
       });
 
-      const data = await response.json();
+      // CORREÇÃO DO JSON PARSER:
+      const responseText = await response.text();
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch (e) {
+        console.error("Erro ao analisar JSON (Register):", responseText);
+        throw new Error("O servidor enviou uma resposta inesperada.");
+      }
 
       if (!response.ok) {
         throw new Error(data.message || 'Erro ao criar conta');
       }
 
-      // 3. Sucesso!
+      // Sucesso!
       Alert.alert(
         'Conta Criada!',
         'Sua conta foi criada com sucesso. Faça o login.',
       );
-      navigation.navigate('Login'); // Volta para o Login
+      navigation.navigate('Login'); // Isso está CORRETO!
 
     } catch (err) {
       setError(err.message);
@@ -117,7 +123,7 @@ const RegisterScreen = ({ navigation }) => {
                 value={nome}
                 onChangeText={setNome}
                 placeholder="Seu nome completo"
-                placeholderTextColor="rgba(0, 0, 0, 0.2)"
+                placeholderTextColor="#aaa"
                 autoCapitalize="words"
                 editable={!isLoading}
               />
@@ -132,7 +138,7 @@ const RegisterScreen = ({ navigation }) => {
                 value={email}
                 onChangeText={setEmail}
                 placeholder="seu@email.com"
-                placeholderTextColor="rgba(0, 0, 0, 0.2)"
+                placeholderTextColor="#aaa"
                 keyboardType="email-address"
                 autoCapitalize="none"
                 editable={!isLoading}
@@ -148,7 +154,7 @@ const RegisterScreen = ({ navigation }) => {
                 value={password}
                 onChangeText={setPassword}
                 placeholder="Crie uma senha (mín. 8 caracteres)"
-                placeholderTextColor="rgba(0, 0, 0, 0.2)"
+                placeholderTextColor="#aaa"
                 secureTextEntry={!isPasswordVisible} 
                 editable={!isLoading}
               />
@@ -173,7 +179,7 @@ const RegisterScreen = ({ navigation }) => {
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
                 placeholder="Confirme sua senha"
-                placeholderTextColor="rgba(0, 0, 0, 0.2)"
+                placeholderTextColor="#aaa"
                 secureTextEntry={!isConfirmPasswordVisible}
                 editable={!isLoading}
               />
@@ -243,7 +249,7 @@ const RegisterScreen = ({ navigation }) => {
   );
 };
 
-// (O restante dos estilos permanece o mesmo que você postou)
+// Seus estilos (corrigi o placeholderTextColor)
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,

@@ -5,12 +5,14 @@ const dotenv = require('dotenv');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const mongoSanitize = require('express-mongo-sanitize');
-const cors = require('cors'); // <-- 1. IMPORTA O CORS
+const cors = require('cors');
+const path = require('path'); // <-- ADICIONADO
 
 // --- Configuração Inicial ---
 dotenv.config();
 
 const authRoutes = require('./routes/authRoutes');
+const postsRoutes = require('./routes/postsRoutes'); // <-- ADICIONADO
 const app = express();
 
 // --- Middlewares de Segurança ---
@@ -20,7 +22,12 @@ app.use(mongoSanitize());
 
 // --- Configuração do CORS ---
 // Permite que seu app web acesse a API
-app.use(cors()); // <-- 2. USA O CORS (ANTES DAS ROTAS)
+app.use(cors()); 
+
+// --- SERVIR ARQUIVOS ESTÁTICOS (IMAGENS) ---
+// Isso torna a pasta 'uploads/' acessível publicamente pela URL
+// Ex: http://localhost:3000/uploads/imagem.jpg
+app.use('/uploads', express.static(path.join(__dirname, 'uploads'))); // <-- ADICIONADO
 
 // --- Rate Limiting ---
 // Limita requisições gerais
@@ -61,6 +68,7 @@ app.get('/', (req, res) => {
 
 // A linha app.use(cors()) deve vir ANTES desta linha
 app.use('/api/auth', authRoutes);
+app.use('/api/posts', postsRoutes); // <-- ADICIONADO
 
 // --- Middleware de Erro Global ---
 app.use((err, req, res, next) => {

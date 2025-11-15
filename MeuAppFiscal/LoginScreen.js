@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react'; // << 1. IMPORTAR useContext
 import {
   SafeAreaView,
   View,
@@ -12,57 +12,40 @@ import {
   Alert, 
   ActivityIndicator, 
 } from 'react-native';
-import { Feather } from '@expo/vector-icons';  // <<<< MUDANÇA AQUI
+import { Feather } from '@expo/vector-icons'; 
 
-
-const API_URL = 'http://192.168.3.26:3000';
+// << 2. IMPORTAR O CONTEXTO DE AUTENTICAÇÃO
+import { AuthContext } from './context/AuthContext';
 
 
 const LoginScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  // << 3. PEGAR A FUNÇÃO 'signIn' E O 'isLoading' DO CONTEXTO
+  const { signIn, isLoading } = useContext(AuthContext);
 
+
+  // << 4. FUNÇÃO handleLogin ATUALIZADA
   const handleLogin = async () => {
     if (!email || !password) {
       setError('Email e senha são obrigatórios.');
       return;
     }
-    setIsLoading(true);
     setError(null); 
 
+    // Chama a função 'signIn' do AuthContext
+    const result = await signIn(email, password);
 
-    try {
-      const response = await fetch(`${API_URL}/api/auth/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: email,
-          password: password,
-        }),
-      });
-
-
-      const data = await response.json();
-
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Erro ao fazer login');
-      }
-      
-      navigation.replace('Home'); 
-
-
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setIsLoading(false); 
+    // Se o login falhar (senha errada, etc), mostra o erro
+    if (result && !result.success) {
+      setError(result.message || 'Credenciais inválidas.');
     }
+    
+    // NENHUM 'navigation.replace' AQUI!
+    // O App.js cuida da navegação automaticamente
   };
 
 
@@ -79,7 +62,6 @@ const LoginScreen = ({ navigation }) => {
             Entre na sua conta para fiscalizar sua cidade
           </Text>
 
-
           <Text style={styles.label}>Email</Text>
           <View style={styles.inputContainer}>
             <Feather name="mail" size={20} color="#888" style={styles.inputIcon} />
@@ -88,13 +70,12 @@ const LoginScreen = ({ navigation }) => {
               value={email}
               onChangeText={setEmail}
               placeholder="seuemail@exemplo.com"
-              placeholderTextColor="rgba(0, 0, 0, 0.2)"
+              placeholderTextColor="#aaa" // Mudei para 'aaa'
               keyboardType="email-address"
               autoCapitalize="none"
               editable={!isLoading}
             />
           </View>
-
 
           <Text style={styles.label}>Senha</Text>
           <View style={styles.inputContainer}>
@@ -104,7 +85,7 @@ const LoginScreen = ({ navigation }) => {
               value={password}
               onChangeText={setPassword}
               placeholder="Sua senha"
-              placeholderTextColor="rgba(0, 0, 0, 0.2)"
+              placeholderTextColor="#aaa" // Mudei para 'aaa'
               secureTextEntry={!isPasswordVisible} 
               editable={!isLoading}
             />
@@ -120,14 +101,12 @@ const LoginScreen = ({ navigation }) => {
             </TouchableOpacity>
           </View>
 
-
           {error && <Text style={styles.errorText}>{error}</Text>}
-
 
           <TouchableOpacity
             style={styles.buttonPrimary}
             onPress={handleLogin}
-            disabled={isLoading}
+            disabled={isLoading} // Usa o 'isLoading' do Contexto
           >
             {isLoading ? (
               <ActivityIndicator size="small" color="#ffffff" />
@@ -136,18 +115,15 @@ const LoginScreen = ({ navigation }) => {
             )}
           </TouchableOpacity>
 
-
           <TouchableOpacity style={styles.link}>
             <Text style={styles.linkText}>Esqueci minha senha</Text>
           </TouchableOpacity>
-
 
           <View style={styles.separatorContainer}>
             <View style={styles.separatorLine} />
             <Text style={styles.separatorText}>OU</Text>
             <View style={styles.separatorLine} />
           </View>
-
 
           <TouchableOpacity 
             style={styles.buttonSecondary}
@@ -156,7 +132,6 @@ const LoginScreen = ({ navigation }) => {
           >
             <Text style={styles.buttonSecondaryText}>Criar nova conta</Text>
           </TouchableOpacity>
-
 
           <TouchableOpacity style={styles.link}>
             <Text style={styles.linkText}>Continuar como visitante</Text>
@@ -167,7 +142,7 @@ const LoginScreen = ({ navigation }) => {
   );
 };
 
-
+// Seus estilos (corrigi o placeholderTextColor)
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
@@ -294,6 +269,5 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
 });
-
 
 export default LoginScreen;
