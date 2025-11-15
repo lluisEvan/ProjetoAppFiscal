@@ -9,13 +9,14 @@ import {
   FlatList, 
   TouchableOpacity,
   ActivityIndicator,
+  Alert 
 } from 'react-native';
 import { Feather, Ionicons } from '@expo/vector-icons'; 
 import { AuthContext } from './context/AuthContext';
 import { API_URL } from './constants';
 
 // --- Componente do Card (Atualizado) ---
-const PostCard = ({ post, userId, onLike, navigation }) => {
+const PostCard = ({ post, userId, onLike, onDelete, navigation }) => {
   const imageUrl = `${API_URL}/${post.imageUrl.replace(/\\/g, '/')}`;
   const username = post.user ? post.user.username : 'Usuário';
   const location = post.location || 'Localização não informada';
@@ -24,17 +25,28 @@ const PostCard = ({ post, userId, onLike, navigation }) => {
     : null;
   const initial = username.charAt(0).toUpperCase();
 
+  // --- ATUALIZAÇÃO DA CATEGORIA (TAG) ---
+  const category = post.category || 'Outros'; // Pega a categoria do post
+
   const isLiked = post.likes.includes(userId);
   const likeCount = post.likes.length;
-  
-  // 1. CONTA OS COMENTÁRIOS
-  // (Nota: A API de getPosts já inclui o array 'comments')
   const commentCount = post.comments.length; 
+  const isOwner = post.user?._id === userId;
+
+  const confirmDelete = () => {
+    Alert.alert(
+      "Deletar Post",
+      "Tem certeza que deseja deletar este post? Esta ação não pode ser desfeita.",
+      [
+        { text: "Cancelar", style: "cancel" },
+        { text: "Deletar", style: "destructive", onPress: () => onDelete(post._id) }
+      ]
+    );
+  };
   
   return (
     <View style={styles.postCard}>
       <View style={styles.postHeader}>
-        {/* Mostra foto de perfil ou inicial */}
         {profilePicUri ? (
           <Image source={{ uri: profilePicUri }} style={styles.avatar} />
         ) : (
@@ -51,7 +63,11 @@ const PostCard = ({ post, userId, onLike, navigation }) => {
             </View>
           ) : null}
         </View>
-        <Feather name="more-horizontal" size={24} color="black" />
+        {isOwner && (
+          <TouchableOpacity onPress={confirmDelete}>
+            <Feather name="trash-2" size={20} color="#E91E63" /> 
+          </TouchableOpacity>
+        )}
       </View>
 
       <Image
@@ -61,7 +77,6 @@ const PostCard = ({ post, userId, onLike, navigation }) => {
 
       <View style={styles.actionBar}>
         <View style={styles.leftActions}>
-          {/* Botão Curtir */}
           <TouchableOpacity onPress={() => onLike(post._id)} style={styles.icon}>
             <Ionicons
               name={isLiked ? "heart" : "heart-outline"}
@@ -69,19 +84,12 @@ const PostCard = ({ post, userId, onLike, navigation }) => {
               color={isLiked ? "#E91E63" : "black"}
             />
           </TouchableOpacity>
-          
-          {/* 2. BOTÃO DE COMENTÁRIO ATUALIZADO */}
           <TouchableOpacity 
             style={styles.icon}
             onPress={() => navigation.navigate('CommentsScreen', { postId: post._id })}
           >
-            <Ionicons
-              name="chatbubble-outline"
-              size={26}
-              color="black"
-            />
+            <Ionicons name="chatbubble-outline" size={26} color="black" />
           </TouchableOpacity>
-          
           <TouchableOpacity style={styles.icon}>
             <Feather name="send" size={26} color="black" />
           </TouchableOpacity>
@@ -93,12 +101,16 @@ const PostCard = ({ post, userId, onLike, navigation }) => {
 
       <View style={styles.contentArea}>
         <Text style={styles.likes}>{likeCount} curtidas</Text>
-        <Text style={styles.caption}>
+
+        {/* --- TAG DE CATEGORIA DINÂMICA --- */}
+        <View style={styles.tagContainer}>
+          <Text style={styles.tagText}>{category}</Text>
+        </View>
+
+        <Text style={styles.caption} numberOfLines={2}>
           <Text style={styles.username}>{username} </Text>
           {post.caption}
         </Text>
-        
-        {/* 3. MOSTRA A CONTAGEM DE COMENTÁRIOS */}
         {commentCount > 0 && (
           <TouchableOpacity 
             onPress={() => navigation.navigate('CommentsScreen', { postId: post._id })}
@@ -113,7 +125,7 @@ const PostCard = ({ post, userId, onLike, navigation }) => {
   );
 };
 
-// --- Componente da Tela Principal ---
+// --- Componente da Tela Principal (Sem alterações) ---
 const HomeScreen = ({ navigation }) => {
   const { userToken, userInfo, signOut } = useContext(AuthContext);
   const [posts, setPosts] = useState([]);
@@ -164,7 +176,6 @@ const HomeScreen = ({ navigation }) => {
       if (!response.ok) {
         throw new Error(updatedPost.message || 'Erro ao curtir post');
       }
-
       setPosts(currentPosts => 
         currentPosts.map(post => 
           post._id === postId ? updatedPost : post
@@ -173,6 +184,28 @@ const HomeScreen = ({ navigation }) => {
     } catch (error) {
       console.error("Erro no handleLike:", error);
       alert("Não foi possível curtir o post.");
+    }
+  };
+
+  const handleDelete = async (postId) => {
+    try {
+      const response = await fetch(`${API_URL}/api/posts/${postId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${userToken}`,
+        },
+      });
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.message || 'Erro ao deletar post');
+      }
+      setPosts(currentPosts => 
+        currentPosts.filter(post => post._id !== postId)
+      );
+      Alert.alert('Sucesso', 'Post deletado.');
+    } catch (error) {
+      console.error("Erro no handleDelete:", error);
+      alert(error.message || "Não foi possível deletar o post.");
     }
   };
 
@@ -188,8 +221,6 @@ const HomeScreen = ({ navigation }) => {
   };
 
   useEffect(() => {
-    // Recarrega os posts quando a tela volta ao foco
-    // Isso também atualizará a contagem de comentários após sair da CommentsScreen
     const unsubscribe = navigation.addListener('focus', () => {
       fetchPosts(1, true); 
     });
@@ -215,20 +246,18 @@ const HomeScreen = ({ navigation }) => {
         </View>
       );
     }
-    
     if (!posts.length && !isLoading) {
       return (
          <View style={styles.errorContainer}>
           <Text style={styles.errorText}>Nenhum post encontrado.</Text>
           <Text style={styles.errorText}>Seja o primeiro a postar!</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('CreatePost')} style={styles.retryButton}>
+          <TouchableOpacity onPress={() => navigation.navigate('HomeTab', { screen: 'CreatePost' })} style={styles.retryButton}>
             <Text style={styles.retryText}>Criar Primeiro Post</Text>
           </TouchableOpacity>
         </View>
       )
     }
 
-    // 4. PASSA A 'navigation' PARA O POSTCARD
     return (
       <FlatList
         data={posts}
@@ -237,7 +266,8 @@ const HomeScreen = ({ navigation }) => {
             post={item} 
             userId={currentUserId} 
             onLike={handleLike} 
-            navigation={navigation} // <-- Passa a navegação
+            onDelete={handleDelete} 
+            navigation={navigation}
           />
         )}
         keyExtractor={(item) => item._id}
@@ -309,11 +339,24 @@ const styles = StyleSheet.create({
   icon: { marginRight: 15 },
   contentArea: { paddingHorizontal: 12, paddingBottom: 15 },
   likes: { fontWeight: 'bold', fontSize: 14, color: '#000' },
-  caption: { fontSize: 14, color: '#000', marginTop: 8, lineHeight: 18 },
-  // 5. ESTILO PARA A CONTAGEM DE COMENTÁRIOS
+  tagContainer: { // Estilo para a tag
+    backgroundColor: '#FFEBEE', 
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  tagText: { // Estilo para o texto da tag
+    color: '#E91E63', 
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  caption: { fontSize: 14, color: '#000', marginTop: 4, lineHeight: 18 },
   commentCountText: {
     fontSize: 14,
-    color: '#888', // Cinza
+    color: '#888', 
     marginTop: 8,
   },
   errorContainer: {

@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 
 const PostSchema = new Schema({
-  // Link para o usuário que postou (vem do seu models/User.js)
+  // Link para o usuário que postou
   user: {
     type: Schema.Types.ObjectId,
     ref: 'User',
@@ -16,17 +16,24 @@ const PostSchema = new Schema({
   },
 
   // O caminho da imagem que foi salva no servidor
-  // Ex: "uploads/image-12345.jpg"
   imageUrl: {
     type: String,
     required: true
   },
 
-  // A localização (como na foto "Rua das Palmeiras, Centro")
+  // A localização (opcional)
   location: {
     type: String,
     trim: true
   },
+  
+  // --- CAMPO DE CATEGORIA (Tipo de Denúncia) ---
+  category: {
+    type: String,
+    trim: true,
+    default: 'Outros' // Valor padrão se nada for enviado
+  },
+  // ---------------------------------------------
 
   // Lista de usuários que curtiram
   likes: [{

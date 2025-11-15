@@ -33,4 +33,6 @@ router.post('/:id/like', authMiddleware, postController.likePost);
 router.post('/:id/comment', authMiddleware, postController.commentPost);
 // Rota para buscar todos os comentários de um post
 router.get('/:id/comments', authMiddleware, postController.getComments);
+// DELETE /api/posts/:id (Deletar Post)
+router.delete('/:id', authMiddleware, postController.deletePost);
 module.exports = router;
