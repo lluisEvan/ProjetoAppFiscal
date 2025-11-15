@@ -6,13 +6,10 @@ exports.createPost = async (req, res) => {
   try {
     const { caption, location } = req.body;
 
-    // Verifica se a imagem foi enviada (o 'uploadMiddleware' faz isso)
     if (!req.file) {
       return res.status(400).json({ message: 'Nenhum arquivo de imagem enviado.' });
     }
 
-    // req.user.id vem do 'authMiddleware' (usuário logado)
-    // req.file.path vem do 'uploadMiddleware' (caminho da imagem salva)
     const newPost = new Post({
       user: req.user.id,
       caption: caption,
@@ -22,7 +19,6 @@ exports.createPost = async (req, res) => {
 
     const post = await newPost.save();
     
-    // Retorna o post recém-criado com os dados do usuário
     const populatedPost = await post.populate('user', 'username email');
 
     res.status(201).json(populatedPost);
@@ -36,20 +32,16 @@ exports.createPost = async (req, res) => {
 // --- 2. Buscar Posts (O Feed com Paginação) ---
 exports.getPosts = async (req, res) => {
   try {
-    // Paginação: Pega a 'página' e o 'limite' da URL
-    // Ex: /api/posts?page=1&limit=10
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
 
-    // Busca os posts no banco de dados
     const posts = await Post.find()
-      .populate('user', 'username email') // Substitui o ID do usuário pelos dados dele
-      .sort({ createdAt: -1 }) // Mais novos primeiro
+      .populate('user', 'username email profilePictureUrl') // Adicionado profilePictureUrl
+      .sort({ createdAt: -1 }) 
       .skip(skip)
       .limit(limit);
 
-    // Conta o total de posts (para o app saber se há mais para carregar)
     const totalPosts = await Post.countDocuments();
 
     res.json({
@@ -72,19 +64,19 @@ exports.likePost = async (req, res) => {
       return res.status(404).json({ message: 'Post não encontrado' });
     }
 
-    // Verifica se o usuário (req.user.id) já curtiu
     const userIndex = post.likes.indexOf(req.user.id);
 
     if (userIndex > -1) {
-      // Já curtiu, então descurte (remove o ID)
-      post.likes.splice(userIndex, 1);
+      post.likes.splice(userIndex, 1); // Descurtir
     } else {
-      // Não curtiu, então curte (adiciona o ID)
-      post.likes.push(req.user.id);
+      post.likes.push(req.user.id); // Curtir
     }
 
     await post.save();
-    res.json(post);
+    
+    // Popula o usuário para garantir que o front-end tenha os dados
+    const populatedPost = await post.populate('user', 'username email profilePictureUrl');
+    res.json(populatedPost); // Retorna o post atualizado
 
   } catch (error) {
     res.status(500).json({ message: 'Erro no servidor ao curtir post.' });
@@ -112,12 +104,31 @@ exports.commentPost = async (req, res) => {
     post.comments.push(newComment);
     await post.save();
     
-    // Retorna o post atualizado com o novo comentário
-    const populatedPost = await post.populate('comments.user', 'username');
+    // Retorna o post atualizado, populando o usuário de todos os comentários
+    const populatedPost = await post.populate('comments.user', 'username profilePictureUrl');
 
     res.json(populatedPost);
 
   } catch (error) {
     res.status(500).json({ message: 'Erro no servidor ao comentar post.' });
+  }
+};
+
+// --- 5. Buscar Comentários de um Post ---
+// (Esta era a função que estava faltando)
+exports.getComments = async (req, res) => {
+  try {
+    const post = await Post.findById(req.params.id)
+      .populate('comments.user', 'username profilePictureUrl'); // Popula o usuário de cada comentário
+
+    if (!post) {
+      return res.status(404).json({ message: 'Post não encontrado' });
+    }
+
+    // Retorna apenas a lista de comentários
+    res.json(post.comments);
+
+  } catch (error) {
+    res.status(500).json({ message: 'Erro no servidor ao buscar comentários.' });
   }
 };

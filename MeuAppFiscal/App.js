@@ -2,25 +2,25 @@ import React, { useContext } from 'react';
 import { View, ActivityIndicator, StyleSheet, Text, Platform } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'; // IMPORTANTE: Navegação por Abas
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'; 
+import { Feather } from '@expo/vector-icons'; 
 
-// Ícones para as abas
-import Feather from 'react-native-vector-icons/Feather';
-
-// Contexto de Autenticação (Para saber se o usuário está logado)
+// Contexto
 import { AuthContext, AuthProvider } from './context/AuthContext';
 
 // Telas
 import LoginScreen from './LoginScreen';
 import RegisterScreen from './RegisterScreen';
 import HomeScreen from './HomeScreen';
-import CreatePostScreen from './CreatePostScreen'; // Tela de criar post
+import CreatePostScreen from './CreatePostScreen'; 
+import ProfileScreen from './ProfileScreen';
+import EditProfileScreen from './EditProfileScreen';
+import CommentsScreen from './CommentsScreen'; // <-- 1. IMPORTA A NOVA TELA
 
 const Stack = createNativeStackNavigator();
-const Tab = createBottomTabNavigator(); // O Tab Navigator cria o rodapé
+const Tab = createBottomTabNavigator(); 
 
-// --- Stacks de Autenticação (Login/Registro) ---
-// Usado quando o usuário não está logado
+// --- Stacks de Autenticação ---
 const AuthStack = () => (
   <Stack.Navigator screenOptions={{ headerShown: false }}>
     <Stack.Screen name="Login" component={LoginScreen} />
@@ -28,27 +28,40 @@ const AuthStack = () => (
   </Stack.Navigator>
 );
 
-// --- Stack da Home (para permitir que CreatePost seja um modal) ---
+// --- Stack da Home (para modal de Criar Post e Comentários) ---
 const HomeStack = () => (
   <Stack.Navigator screenOptions={{ headerShown: false }}>
     <Stack.Screen name="Feed" component={HomeScreen} />
     <Stack.Screen 
       name="CreatePost" 
       component={CreatePostScreen} 
-      options={{ presentation: 'modal' }} // A tela de postagem desliza de baixo para cima
+      options={{ presentation: 'modal' }} 
+    />
+    {/* --- 2. ADICIONA A TELA DE COMENTÁRIOS AO STACK --- */}
+    <Stack.Screen
+      name="CommentsScreen"
+      component={CommentsScreen}
+      options={{ presentation: 'modal' }}
     />
   </Stack.Navigator>
 );
 
+// --- Stack do Perfil (para modal de Editar Perfil) ---
+const ProfileStack = () => (
+  <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Screen name="Profile" component={ProfileScreen} />
+    <Stack.Screen name="EditProfile" component={EditProfileScreen} />
+  </Stack.Navigator>
+);
+
 // --- Tabs Principais do App (O Rodapé) ---
-// Usado quando o usuário ESTÁ logado
 const AppTabs = () => (
   <Tab.Navigator
-    screenOptions={({ route }) => ({
-      headerShown: false, // Esconde o cabeçalho padrão
-      tabBarShowLabel: false, // Não mostra o texto dos ícones
-      tabBarActiveTintColor: '#191923', // Cor do ícone ativo
-      tabBarInactiveTintColor: '#888', // Cor do ícone inativo
+    screenOptions={{
+      headerShown: false, 
+      tabBarShowLabel: false, 
+      tabBarActiveTintColor: '#191923', 
+      tabBarInactiveTintColor: '#888', 
       tabBarStyle: {
         backgroundColor: '#fff',
         borderTopWidth: 1,
@@ -56,12 +69,12 @@ const AppTabs = () => (
         height: 60,
         paddingBottom: 5,
       },
-    })}
+    }}
   >
     {/* Aba 1: Home/Feed */}
     <Tab.Screen
       name="HomeTab"
-      component={HomeStack} // Inicia o Feed (que está dentro de um Stack)
+      component={HomeStack} 
       options={{
         tabBarIcon: ({ color, size }) => (
           <Feather name="home" color={color} size={size} />
@@ -83,7 +96,7 @@ const AppTabs = () => (
     {/* Aba 3: Adicionar Post (O botão '+' no rodapé) */}
     <Tab.Screen
       name="AddPostTab"
-      component={View} // Componente "dummy" (falso)
+      component={View} // Dummy
       options={{
         tabBarIcon: ({ size }) => (
           <View style={styles.addPostButton}>
@@ -91,11 +104,10 @@ const AppTabs = () => (
           </View>
         ),
       }}
-      // Listener para navegar para o modal de criação
       listeners={({ navigation }) => ({
         tabPress: (e) => {
-          e.preventDefault(); // Impede a navegação padrão
-          navigation.navigate('HomeTab', { screen: 'CreatePost' }); // Abre o modal
+          e.preventDefault(); 
+          navigation.navigate('HomeTab', { screen: 'CreatePost' }); 
         },
       })}
     />
@@ -111,10 +123,10 @@ const AppTabs = () => (
       }}
     />
     
-    {/* Aba 5: Perfil (Exemplo) */}
+    {/* Aba 5: Perfil (Tela Real) */}
     <Tab.Screen
       name="ProfileTab"
-      component={() => <View style={styles.tabPlaceholder}><Text>Tela de Perfil</Text></View>}
+      component={ProfileStack} 
       options={{
         tabBarIcon: ({ color, size }) => (
           <Feather name="user" color={color} size={size} />
@@ -124,12 +136,10 @@ const AppTabs = () => (
   </Tab.Navigator>
 );
 
-
-// --- O App Principal que decide entre AuthStack e AppTabs ---
+// --- Navegador Principal ---
 const AppNavigator = () => {
   const { isLoading, userToken } = useContext(AuthContext);
 
-  // Enquanto o app verifica o token no AsyncStorage
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
@@ -140,14 +150,12 @@ const AppNavigator = () => {
 
   return (
     <NavigationContainer>
-      {/* Se tiver token, mostra as abas; se não, mostra Login */}
       {userToken ? <AppTabs /> : <AuthStack />} 
     </NavigationContainer>
   );
 };
 
-// --- Envolva TUDO no AuthProvider ---
-// O AuthProvider é o que dá ao AppNavigator o valor de userToken
+// --- Exportação Principal ---
 export default function App() {
   return (
     <AuthProvider>
@@ -156,6 +164,7 @@ export default function App() {
   );
 }
 
+// --- Estilos ---
 const styles = StyleSheet.create({
   loadingContainer: {
     flex: 1,
@@ -167,7 +176,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center', 
     alignItems: 'center'
   },
-  addPostButton: { // Estilo para o botão de '+' no rodapé
+  addPostButton: { 
     backgroundColor: '#191923', 
     width: 60,
     height: 60,

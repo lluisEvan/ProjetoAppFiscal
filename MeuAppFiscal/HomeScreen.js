@@ -6,81 +6,116 @@ import {
   Image,
   StyleSheet,
   StatusBar,
-  FlatList,
+  FlatList, 
   TouchableOpacity,
   ActivityIndicator,
 } from 'react-native';
-import Feather from 'react-native-vector-icons/Feather';
-import Ionicons from 'react-native-vector-icons/Ionicons';
+import { Feather, Ionicons } from '@expo/vector-icons'; 
 import { AuthContext } from './context/AuthContext';
 import { API_URL } from './constants';
 
-const PostCard = ({ post }) => {
+// --- Componente do Card (Atualizado) ---
+const PostCard = ({ post, userId, onLike, navigation }) => {
   const imageUrl = `${API_URL}/${post.imageUrl.replace(/\\/g, '/')}`;
   const username = post.user ? post.user.username : 'Usuário';
   const location = post.location || 'Localização não informada';
+  const profilePicUri = post.user?.profilePictureUrl
+    ? `${API_URL}/${post.user.profilePictureUrl.replace(/\\/g, '/')}`
+    : null;
+  const initial = username.charAt(0).toUpperCase();
+
+  const isLiked = post.likes.includes(userId);
+  const likeCount = post.likes.length;
+  
+  // 1. CONTA OS COMENTÁRIOS
+  // (Nota: A API de getPosts já inclui o array 'comments')
+  const commentCount = post.comments.length; 
   
   return (
     <View style={styles.postCard}>
-      {/* 1. Cabeçalho do Post */}
       <View style={styles.postHeader}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarLetter}>{username.charAt(0).toUpperCase()}</Text>
-        </View>
+        {/* Mostra foto de perfil ou inicial */}
+        {profilePicUri ? (
+          <Image source={{ uri: profilePicUri }} style={styles.avatar} />
+        ) : (
+          <View style={[styles.avatar, styles.avatarPlaceholder]}>
+            <Text style={styles.avatarLetter}>{initial}</Text>
+          </View>
+        )}
         <View style={styles.userInfo}>
           <Text style={styles.username}>{username}</Text>
-          <View style={styles.locationContainer}>
-            <Ionicons name="location-outline" size={12} color="#555" />
-            <Text style={styles.locationText}>{location}</Text>
-          </View>
+          {location ? (
+            <View style={styles.locationContainer}>
+              <Ionicons name="location-outline" size={12} color="#555" />
+              <Text style={styles.locationText}>{location}</Text>
+            </View>
+          ) : null}
         </View>
         <Feather name="more-horizontal" size={24} color="black" />
       </View>
 
-      {/* 2. Imagem Principal do Post */}
       <Image
         source={{ uri: imageUrl }}
         style={styles.postImage}
-        onError={(e) => console.log('Erro ao carregar imagem:', imageUrl, e.nativeEvent.error)}
       />
 
-      {/* 3. Barra de Ações (Likes, Comentários, etc.) */}
       <View style={styles.actionBar}>
         <View style={styles.leftActions}>
-          <Feather name="heart" size={26} color="black" style={styles.icon} />
-          <Ionicons
-            name="chatbubble-outline"
-            size={26}
-            color="black"
+          {/* Botão Curtir */}
+          <TouchableOpacity onPress={() => onLike(post._id)} style={styles.icon}>
+            <Ionicons
+              name={isLiked ? "heart" : "heart-outline"}
+              size={26}
+              color={isLiked ? "#E91E63" : "black"}
+            />
+          </TouchableOpacity>
+          
+          {/* 2. BOTÃO DE COMENTÁRIO ATUALIZADO */}
+          <TouchableOpacity 
             style={styles.icon}
-          />
-          <Feather name="send" size={26} color="black" style={styles.icon} />
+            onPress={() => navigation.navigate('CommentsScreen', { postId: post._id })}
+          >
+            <Ionicons
+              name="chatbubble-outline"
+              size={26}
+              color="black"
+            />
+          </TouchableOpacity>
+          
+          <TouchableOpacity style={styles.icon}>
+            <Feather name="send" size={26} color="black" />
+          </TouchableOpacity>
         </View>
         <View style={styles.rightActions}>
           <Feather name="bookmark" size={26} color="black" />
         </View>
       </View>
 
-      {/* 4. Seção de Conteúdo (Curtidas, Legenda) */}
       <View style={styles.contentArea}>
-        <Text style={styles.likes}>{post.likes.length || 0} curtidas</Text>
-        <View style={styles.tagContainer}>
-          {/* Você precisaria ter um campo 'tags' no seu modelo Post para popular isso */}
-          <Text style={styles.tagText}>Lixo Doméstico</Text> 
-        </View>
+        <Text style={styles.likes}>{likeCount} curtidas</Text>
         <Text style={styles.caption}>
           <Text style={styles.username}>{username} </Text>
           {post.caption}
         </Text>
-        {/* TO-DO: Implementar hashtags dinamicamente */}
-        {/* <Text style={styles.hashtags}>#muitomatheus #oiaaiprefeito</Text> */}
+        
+        {/* 3. MOSTRA A CONTAGEM DE COMENTÁRIOS */}
+        {commentCount > 0 && (
+          <TouchableOpacity 
+            onPress={() => navigation.navigate('CommentsScreen', { postId: post._id })}
+          >
+            <Text style={styles.commentCountText}>
+              Ver todos os {commentCount} comentários
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   );
 };
 
+// --- Componente da Tela Principal ---
 const HomeScreen = ({ navigation }) => {
-  const { userToken, signOut } = useContext(AuthContext);
+  const { userToken, userInfo, signOut } = useContext(AuthContext);
   const [posts, setPosts] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -88,41 +123,56 @@ const HomeScreen = ({ navigation }) => {
   const [totalPages, setTotalPages] = useState(1);
   const [error, setError] = useState(null);
 
+  const currentUserId = userInfo?.id || userInfo?._id;
+
   const fetchPosts = async (page = 1, refreshing = false) => {
     if (!refreshing) setIsLoading(true);
-    setError(null);
-    
+    setError(null); 
     try {
       const response = await fetch(`${API_URL}/api/posts?page=${page}&limit=5`, {
-        headers: {
-          'Authorization': `Bearer ${userToken}`,
-        },
+        headers: { 'Authorization': `Bearer ${userToken}` },
       });
-
       const responseText = await response.text();
       let data;
-      try {
-        data = JSON.parse(responseText);
-      } catch (e) {
-        console.error("Não é JSON! Resposta da API:", responseText);
-        throw new Error("O servidor enviou uma resposta inesperada.");
-      }
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Erro ao buscar posts');
-      }
+      try { data = JSON.parse(responseText); }
+      catch (e) { throw new Error("O servidor enviou uma resposta inesperada."); }
+      if (!response.ok) throw new Error(data.message || 'Erro ao buscar posts');
 
       setPosts(refreshing ? data.posts : [...posts, ...data.posts]);
       setCurrentPage(data.currentPage);
       setTotalPages(data.totalPages);
-
     } catch (error) {
       console.error(error);
-      setError(error.message);
+      setError(error.message); 
       if (error.message.includes('Token')) signOut(); 
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
+    }
+  };
+
+  const handleLike = async (postId) => {
+    try {
+      const response = await fetch(`${API_URL}/api/posts/${postId}/like`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${userToken}` },
+      });
+      const responseText = await response.text();
+      let updatedPost;
+      try { updatedPost = JSON.parse(responseText); }
+      catch (e) { throw new Error("Resposta inesperada do servidor ao curtir."); }
+      if (!response.ok) {
+        throw new Error(updatedPost.message || 'Erro ao curtir post');
+      }
+
+      setPosts(currentPosts => 
+        currentPosts.map(post => 
+          post._id === postId ? updatedPost : post
+        )
+      );
+    } catch (error) {
+      console.error("Erro no handleLike:", error);
+      alert("Não foi possível curtir o post.");
     }
   };
 
@@ -138,13 +188,13 @@ const HomeScreen = ({ navigation }) => {
   };
 
   useEffect(() => {
+    // Recarrega os posts quando a tela volta ao foco
+    // Isso também atualizará a contagem de comentários após sair da CommentsScreen
     const unsubscribe = navigation.addListener('focus', () => {
       fetchPosts(1, true); 
     });
     return unsubscribe;
   }, [navigation]);
-
-  // Removido o renderHeader daqui, pois o cabeçalho agora está em App.js para a aba
 
   const renderFooter = () => {
     if (isLoading && !isRefreshing) {
@@ -171,7 +221,6 @@ const HomeScreen = ({ navigation }) => {
          <View style={styles.errorContainer}>
           <Text style={styles.errorText}>Nenhum post encontrado.</Text>
           <Text style={styles.errorText}>Seja o primeiro a postar!</Text>
-          {/* Adicione um botão para ir para CreatePostScreen se quiser */}
           <TouchableOpacity onPress={() => navigation.navigate('CreatePost')} style={styles.retryButton}>
             <Text style={styles.retryText}>Criar Primeiro Post</Text>
           </TouchableOpacity>
@@ -179,10 +228,18 @@ const HomeScreen = ({ navigation }) => {
       )
     }
 
+    // 4. PASSA A 'navigation' PARA O POSTCARD
     return (
       <FlatList
         data={posts}
-        renderItem={({ item }) => <PostCard post={item} />}
+        renderItem={({ item }) => (
+          <PostCard 
+            post={item} 
+            userId={currentUserId} 
+            onLike={handleLike} 
+            navigation={navigation} // <-- Passa a navegação
+          />
+        )}
         keyExtractor={(item) => item._id}
         contentContainerStyle={styles.scrollView}
         onRefresh={onRefresh}
@@ -197,8 +254,7 @@ const HomeScreen = ({ navigation }) => {
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" />
-      {/* O cabeçalho agora é controlado pelo Tab Navigator, mas podemos ter um específico se quisermos */}
-      <View style={styles.appHeader}> {/* Novo cabeçalho simples para a Home */}
+      <View style={styles.appHeader}> 
         <Text style={styles.appHeaderTitle}>Fiscal Cidadão</Text>
         <TouchableOpacity onPress={signOut}>
             <Feather name="log-out" size={24} color="#E91E63" />
@@ -209,10 +265,10 @@ const HomeScreen = ({ navigation }) => {
   );
 };
 
-// Folha de Estilos
+// --- Estilos ---
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#fff' },
-  appHeader: { // Novo estilo de cabeçalho da HomeScreen (dentro da Tab)
+  appHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -234,10 +290,12 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
+    marginRight: 10,
+  },
+  avatarPlaceholder: {
     backgroundColor: '#ccc',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 10,
   },
   avatarLetter: { fontSize: 18, fontWeight: 'bold', color: '#fff' },
   userInfo: { flex: 1 },
@@ -251,10 +309,13 @@ const styles = StyleSheet.create({
   icon: { marginRight: 15 },
   contentArea: { paddingHorizontal: 12, paddingBottom: 15 },
   likes: { fontWeight: 'bold', fontSize: 14, color: '#000' },
-  tagContainer: { backgroundColor: '#FFEBEE', paddingVertical: 4, paddingHorizontal: 8, borderRadius: 6, alignSelf: 'flex-start', marginTop: 8 },
-  tagText: { color: '#E91E63', fontSize: 12, fontWeight: '500' },
   caption: { fontSize: 14, color: '#000', marginTop: 8, lineHeight: 18 },
-  hashtags: { fontSize: 14, color: '#00376B', marginTop: 4 },
+  // 5. ESTILO PARA A CONTAGEM DE COMENTÁRIOS
+  commentCountText: {
+    fontSize: 14,
+    color: '#888', // Cinza
+    marginTop: 8,
+  },
   errorContainer: {
     flex: 1,
     justifyContent: 'center',

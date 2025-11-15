@@ -24,6 +24,14 @@ const UserSchema = new mongoose.Schema({
     minlength: [8, 'A senha deve ter no mínimo 8 caracteres'],
     select: false
   },
+  
+  // --- ADICIONE ESTE CAMPO ---
+  profilePictureUrl: {
+    type: String,
+    default: '' // Começa vazio
+  },
+  // -------------------------
+
   createdAt: {
     type: Date,
     default: Date.now

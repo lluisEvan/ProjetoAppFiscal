@@ -1,7 +1,5 @@
 import React, { createContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
-// Importa a URL da sua API
 import { API_URL } from '../constants'; 
 
 export const AuthContext = createContext();
@@ -15,14 +13,12 @@ export const AuthProvider = ({ children }) => {
   const signIn = async (email, password) => {
     setIsLoading(true);
     try {
-      // 1. Tenta fazer o login na API
       const response = await fetch(`${API_URL}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });
 
-      // Pega a resposta como texto primeiro
       const responseText = await response.text();
       let data;
       try {
@@ -36,12 +32,10 @@ export const AuthProvider = ({ children }) => {
         throw new Error(data.message || 'Erro ao fazer login');
       }
 
-      // 2. Sucesso! Salva o token no estado e no Storage
       setUserToken(data.token);
       setUserInfo(data.user);
       await AsyncStorage.setItem('userToken', data.token);
       await AsyncStorage.setItem('userInfo', JSON.stringify(data.user));
-
       setIsLoading(false);
       return { success: true };
 
@@ -61,6 +55,18 @@ export const AuthProvider = ({ children }) => {
     setIsLoading(false);
   };
 
+  // --- FUNÇÃO NOVA ---
+  // Função para atualizar o usuário (após editar perfil)
+  const updateUser = async (newUserInfo) => {
+    try {
+      setUserInfo(newUserInfo); // Atualiza o estado
+      await AsyncStorage.setItem('userInfo', JSON.stringify(newUserInfo)); // Atualiza o storage
+    } catch (e) {
+      console.log(`updateUser error: ${e}`);
+    }
+  };
+  // ------------------
+
   // Verifica se o usuário já está logado quando o app abre
   const isLoggedIn = async () => {
     try {
@@ -72,7 +78,6 @@ export const AuthProvider = ({ children }) => {
         setUserToken(token);
         setUserInfo(JSON.parse(user));
       }
-      
       setIsLoading(false);
     } catch (e) {
       console.log(`isLoggedIn error: ${e}`);
@@ -80,13 +85,21 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Roda a verificação de login na primeira vez que o app abre
   useEffect(() => {
     isLoggedIn();
   }, []);
 
   return (
-    <AuthContext.Provider value={{ signIn, signOut, userToken, userInfo, isLoading }}>
+    <AuthContext.Provider 
+      value={{ 
+        signIn, 
+        signOut, 
+        updateUser, // <-- ADICIONADO AQUI
+        userToken, 
+        userInfo, 
+        isLoading 
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

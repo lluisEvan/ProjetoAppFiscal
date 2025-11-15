@@ -120,3 +120,46 @@ exports.getProfile = async (req, res) => {
     user: req.user 
   });
 };
+exports.updateProfile = async (req, res) => {
+  try {
+    const { username } = req.body;
+    const user = await User.findById(req.user.id);
+
+    if (!user) {
+      return res.status(404).json({ message: 'Usuário não encontrado' });
+    }
+
+    // 1. Atualiza o nome de usuário (se foi enviado)
+    if (username && username !== user.username) {
+      // Verifica se o novo nome já está em uso
+      const usernameExists = await User.findOne({ username });
+      if (usernameExists && usernameExists._id.toString() !== req.user.id) {
+        return res.status(400).json({ message: 'Nome de usuário já em uso' });
+      }
+      user.username = username;
+    }
+
+    // 2. Atualiza a foto de perfil (se foi enviada)
+    if (req.file) {
+      // (Opcional: aqui você poderia deletar a foto antiga do servidor)
+      user.profilePictureUrl = req.file.path; // Salva o caminho da nova foto
+    }
+
+    const updatedUser = await user.save();
+
+    // 3. Retorna o usuário ATUALIZADO (sem a senha)
+    res.json({
+      message: 'Perfil atualizado com sucesso',
+      user: {
+        id: updatedUser._id,
+        email: updatedUser.email,
+        username: updatedUser.username,
+        profilePictureUrl: updatedUser.profilePictureUrl
+      }
+    });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Erro ao atualizar perfil', error: error.message });
+  }
+};

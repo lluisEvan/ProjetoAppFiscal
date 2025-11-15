@@ -31,5 +31,6 @@ router.post('/:id/like', authMiddleware, postController.likePost);
 // POST /api/posts/:id/comment
 // Rota para comentar em um post
 router.post('/:id/comment', authMiddleware, postController.commentPost);
-
+// Rota para buscar todos os comentários de um post
+router.get('/:id/comments', authMiddleware, postController.getComments);
 module.exports = router;
